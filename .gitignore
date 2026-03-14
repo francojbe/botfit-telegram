@@ -1,0 +1,25 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (¡nunca subir al repositorio!)
+.env
+.env.local
+.env.production
+
+# Compilado TypeScript
+dist/
+
+# Logs
+*.log
+error.log
+
+# Archivos temporales
+tmp_*.ts
+tmp_*.js
+test-*.ts
+test_*.ts
+migration.ts
+
+# OS
+.DS_Store
+Thumbs.db
