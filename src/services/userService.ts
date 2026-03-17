@@ -87,15 +87,16 @@ export async function actualizarPerfil(userId: number, datos: Partial<UserInput>
 /**
  * Registra una métrica diaria para el usuario.
  */
-export async function registrarPeso(userId: number, peso: number, notas: string = ''): Promise<boolean> {
+export async function registrarPeso(userId: number, peso: number, notas: string = '', fechaCustom?: string): Promise<boolean> {
   try {
+    const fecha = fechaCustom || new Date().toLocaleDateString('en-CA');
     const { error } = await supabase
       .from('daily_metrics')
       .insert({
         user_id: userId,
         peso_actual: peso,
         notas: notas,
-        fecha: new Date().toLocaleDateString('en-CA')
+        fecha: fecha
       });
 
     if (error) {
@@ -113,13 +114,14 @@ export async function registrarPeso(userId: number, peso: number, notas: string 
 /**
  * Asienta un registro de comida (macros, foto) para el usuario.
  */
-export async function asentarComida(userId: number, descripcion: string, imagenUrl: string | null, macros: any): Promise<boolean> {
+export async function asentarComida(userId: number, descripcion: string, imagenUrl: string | null, macros: any, fechaCustom?: string): Promise<boolean> {
   try {
       // Intentamos extraer macros si vienen en el objeto o defaults
       const cal = macros?.calorias || 0;
       const prot = macros?.proteina || 0;
       const carb = macros?.carbs || 0;
       const grasas = macros?.grasas || 0;
+      const fecha = fechaCustom || new Date().toLocaleDateString('en-CA');
 
       const { error } = await supabase
         .from('meals_log')
@@ -131,7 +133,7 @@ export async function asentarComida(userId: number, descripcion: string, imagenU
           est_proteina: prot,
           est_carbs: carb,
           est_grasas: grasas,
-          fecha: new Date().toLocaleDateString('en-CA')
+          fecha: fecha
         });
 
       if (error) {
@@ -149,8 +151,9 @@ export async function asentarComida(userId: number, descripcion: string, imagenU
 /**
  * Asienta un entrenamiento para el usuario.
  */
-export async function registrarEntrenamiento(userId: number, rutina: string, workoutType?: string, completado: boolean = true): Promise<string | null> {
+export async function registrarEntrenamiento(userId: number, rutina: string, workoutType?: string, completado: boolean = true, fechaCustom?: string): Promise<string | null> {
    try {
+       const fecha = fechaCustom || new Date().toLocaleDateString('en-CA');
        const { data, error } = await supabase
         .from('workout_log')
         .insert({
@@ -158,7 +161,7 @@ export async function registrarEntrenamiento(userId: number, rutina: string, wor
           rutina_texto: rutina,
           workout_type: workoutType,
           completado: completado,
-          fecha: new Date().toLocaleDateString('en-CA') // Asegurar fecha local
+          fecha: fecha
         })
         .select();
         
@@ -425,6 +428,27 @@ export async function obtenerEntrenamientoHoy(userId: number): Promise<any | nul
       .select('*, exercise_logs(*)')
       .eq('user_id', userId)
       .eq('fecha', hoy)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) return null;
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * [STATS] Obtiene el entrenamiento de una fecha específica.
+ */
+export async function obtenerEntrenamientoPorFecha(userId: number, fecha: string): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('workout_log')
+      .select('*, exercise_logs(*)')
+      .eq('user_id', userId)
+      .eq('fecha', fecha)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

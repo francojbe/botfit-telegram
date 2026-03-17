@@ -101,14 +101,16 @@ ${userContext}
 Puedes ejecutar acciones en la base de datos incluyendo estos tags al FINAL de tu respuesta.
 Incluye TODOS los que apliquen según el mensaje del usuario.
 
+3. Si el usuario reporta algo de "ayer" o una fecha específica, incluye el campo "fecha" (YYYY-MM-DD) en la acción. Hoy es ${new Date().toLocaleDateString('en-CA')}.
+
 1. REGISTRO DE COMIDA:
-   ACCION: {"tipo":"LOG_MEAL","descripcion":"Pollo con arroz","calorias":520,"proteina":45,"carbs":55,"grasas":12}
+   ACCION: {"tipo":"LOG_MEAL","descripcion":"Pollo con arroz","calorias":520,"proteina":45,"carbs":55,"grasas":12, "fecha": "YYYY-MM-DD"}
 
 2. REGISTRO DE EJERCICIOS:
-   ACCION: {"tipo":"LOG_EXERCISE","ejercicios":[{"nombre":"Sentadilla","series":4,"reps":8,"peso":50}]}
+   ACCION: {"tipo":"LOG_EXERCISE","ejercicios":[{"nombre":"Sentadilla","series":4,"reps":8,"peso":50}], "fecha": "YYYY-MM-DD"}
 
 3. REGISTRO DE PESO CORPORAL:
-   ACCION: {"tipo":"LOG_WEIGHT","peso":80.5,"notas":"En ayunas"}
+   ACCION: {"tipo":"LOG_WEIGHT","peso":80.5,"notas":"En ayunas", "fecha": "YYYY-MM-DD"}
 
 4. ACTUALIZACIÓN DE PERFIL:
    ACCION: {"tipo":"UPDATE_PROFILE","datos":{"campo":"valor"}}

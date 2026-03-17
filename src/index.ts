@@ -18,6 +18,7 @@ import {
   registrarPeso,
   obtenerResumenNutricionalHoy,
   obtenerEntrenamientoHoy,
+  obtenerEntrenamientoPorFecha,
   obtenerHistorialComidas,
   obtenerHistorialPesos,
   obtenerHistorialEntrenos
@@ -519,22 +520,20 @@ async function ejecutarAccionesAgente(
             proteina: action.proteina,
             carbs: action.carbs,
             grasas: action.grasas
-          });
+          }, action.fecha);
           confirmaciones.push(
-            `✅ _Comida registrada: ~${action.calorias ?? '?'} kcal · ${action.proteina ?? '?'}g proteína_`
+            `✅ _Comida registrada${action.fecha ? ` (${action.fecha})` : ''}: ~${action.calorias ?? '?'} kcal · ${action.proteina ?? '?'}g proteína_`
           );
           break;
         }
 
         case 'LOG_EXERCISE': {
-          let workout = await obtenerUltimoEntrenamiento(userId);
-          const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+          const targetDate = action.fecha || new Date().toLocaleDateString('en-CA');
+          let workout = await obtenerEntrenamientoPorFecha(userId, targetDate);
 
-          const workoutDate = workout ? new Date(workout.fecha).toLocaleDateString('en-CA') : null;
-
-          if (!workout || workoutDate !== hoy) {
-            console.log(`[Agente] No hay entrenamiento hoy o es de otro día. Creando Manuel.`);
-            const newId = await registrarEntrenamiento(userId, 'Entrenamiento Manual', 'M', true);
+          if (!workout) {
+            console.log(`[Agente] No hay entrenamiento el ${targetDate}. Creando...`);
+            const newId = await registrarEntrenamiento(userId, 'Entrenamiento Manual', 'M', true, targetDate);
             workout = { id: newId };
           }
 
@@ -546,15 +545,15 @@ async function ejecutarAccionesAgente(
             }
             if (guardados > 0) {
               const lista = action.ejercicios.map((e: any) => `${e.nombre} ${e.peso ?? '?'}kg×${e.reps}`).join(', ');
-              confirmaciones.push(`✅ _${guardados} ejercicios guardados: ${lista}_`);
+              confirmaciones.push(`✅ _${guardados} ejercicios guardados${action.fecha ? ` del ${action.fecha}` : ''}: ${lista}_`);
             }
           }
           break;
         }
 
         case 'LOG_WEIGHT': {
-          await registrarPeso(userId, action.peso, action.notas || '');
-          confirmaciones.push(`✅ _Peso registrado: ${action.peso}kg_`);
+          await registrarPeso(userId, action.peso, action.notas || '', action.fecha);
+          confirmaciones.push(`✅ _Peso registrado${action.fecha ? ` (${action.fecha})` : ''}: ${action.peso}kg_`);
           break;
         }
 
