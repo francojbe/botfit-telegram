@@ -118,12 +118,13 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
 
 ═══ REGLAS DE ORO ═══
 1. Analiza siempre los datos del usuario ANTES de responder. Personaliza cada respuesta.
-2. Si el usuario menciona una comida (aunque sea vagamente), estima macros y lanza LOG_MEAL.
-3. Si menciona un ejercicio con peso/reps, lanza LOG_EXERCISE.
-4. Si menciona su peso corporal, lanza LOG_WEIGHT.
-5. Respuestas CORTAS y DIRECTAS (máx 200 palabras), estilo coach profesional. Sin emojis excesivos.
-6. NUNCA expliques al usuario que estás ejecutando acciones, solo hazlo.
-7. Nunca muestres los tags ACCION: en la parte visible del mensaje; solo escríbelos al final.
+2. Si el usuario envía una FOTO de comida, usa visión artificial para identificar ingredientes y porciones. Estima calorías/macros y genera SIEMPRE un LOG_MEAL.
+3. Si el usuario menciona una comida por texto (aunque sea vagamente), estima macros y lanza LOG_MEAL.
+4. Si menciona un ejercicio con peso/reps, lanza LOG_EXERCISE.
+5. Si menciona su peso corporal, lanza LOG_WEIGHT.
+6. Respuestas CORTAS y DIRECTAS (máx 200 palabras), estilo coach profesional. Sin emojis excesivos.
+7. NUNCA expliques al usuario que estás ejecutando acciones, solo hazlo.
+8. Nunca muestres los tags ACCION: en la parte visible del mensaje; solo escríbelos al final.
 `;
 
   try {
@@ -135,19 +136,34 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
 
     // Agregar el mensaje actual (texto o imagen)
     if (imageUrl) {
-      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      const base64Image = Buffer.from(imageResponse.data as any, 'binary').toString('base64');
-      const mimeType = imageResponse.headers['content-type'] || 'image/jpeg';
+      console.log(`[aiService] Procesando imagen para el usuario ${userId}...`);
+      let base64Image = '';
+      let mimeType = 'image/jpeg';
+      
+      try {
+        const imageResponse = await axios.get(imageUrl, { 
+          responseType: 'arraybuffer',
+          timeout: 10000 
+        });
+        base64Image = Buffer.from(imageResponse.data as any, 'binary').toString('base64');
+        mimeType = imageResponse.headers['content-type'] || 'image/jpeg';
+        console.log(`[aiService] Imagen descargada con éxito (${mimeType}).`);
+      } catch (imgError: any) {
+        console.error(`[aiService] Error descargando imagen de Telegram:`, imgError.message);
+        // Si falla la descarga, intentamos enviar solo el texto para no romper la experiencia
+      }
+
+      const promptImagen = mensaje || 'Analiza esta comida detalladamente (porciones, ingredientes, macros) y genera la ACCION: {"tipo":"LOG_MEAL",...} correspondiente.';
 
       messages.push({
         role: 'user',
-        content: [
-          { type: 'text', text: mensaje || 'Analiza esta comida según nuestra metodología.' },
+        content: base64Image ? [
+          { type: 'text', text: promptImagen },
           {
             type: 'image_url',
             image_url: { url: `data:${mimeType};base64,${base64Image}` }
           }
-        ]
+        ] : promptImagen
       });
     } else {
       messages.push({ role: 'user', content: mensaje });
@@ -164,12 +180,18 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
         'Authorization': `Bearer ${AUTH_SECRET}`,
         'Content-Type': 'application/json'
       },
-      timeout: 45000
+      timeout: 50000
     });
 
     const data = response.data as any;
+    console.log(`[aiService] Respuesta del proxy recibida. Longitud: ${data?.choices?.[0]?.message?.content?.length || 0}`);
+    
     if (data?.choices?.[0]?.message?.content) {
-      return data.choices[0].message.content;
+      const gptRes = data.choices[0].message.content;
+      if (imageUrl && !gptRes.includes('LOG_MEAL')) {
+        console.warn('[aiService] ¡Alerta! La IA analizó una foto pero no generó la ACCION: LOG_MEAL.');
+      }
+      return gptRes;
     }
     return 'Recibí tu mensaje, pero mi conexión cerebral está lenta. ¿Puedes repetirlo?';
   } catch (error: any) {
@@ -181,8 +203,11 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
 /**
  * Función puente para compatibilidad: analizar foto de comida.
  */
-export async function analizarFoto(userId: number, imageUrl: string): Promise<string> {
-  return procesarMensaje(userId, 'Analiza esta comida detalladamente. Estima calorías y macros según nuestra metodología.', imageUrl);
+export async function analizarFoto(userId: number, imageUrl: string, descripcion?: string): Promise<string> {
+  const prompt = descripcion 
+    ? `El usuario dice: "${descripcion}". Analiza la comida de la imagen basándote en esto.`
+    : 'Analiza esta comida detalladamente (porciones e ingredientes) para estimar calorías y macros.';
+  return procesarMensaje(userId, prompt, imageUrl);
 }
 
 /**

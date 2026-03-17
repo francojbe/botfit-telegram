@@ -423,13 +423,14 @@ bot.on('photo', async (ctx) => {
 
     const link = await ctx.telegram.getFileLink(foto.file_id);
     const imageUrl = link.href;
-
-    const respuestaIA = await analizarFoto(userId, imageUrl);
+    const caption = ctx.message.caption || '';
+    const respuestaIA = await analizarFoto(userId, imageUrl, caption);
+    console.log(`[Bot] Respuesta IA (Foto): ${respuestaIA.substring(0, 100)}...`);
     const { mensaje: cleanMessage, confirmaciones } = await ejecutarAccionesAgente(ctx, userId, respuestaIA, imageUrl);
 
     const respuestaFinal = [cleanMessage, ...confirmaciones].filter(Boolean).join('\n');
     await guardarMensaje(userId, 'assistant', cleanMessage);
-    await ctx.reply(respuestaFinal);
+    await ctx.reply(respuestaFinal, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
   } catch (error) {
     console.error('[Bot] Error analizando foto:', error);
     await ctx.reply('Error analizando la foto. Intenta de nuevo.');
