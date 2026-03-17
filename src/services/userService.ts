@@ -94,7 +94,8 @@ export async function registrarPeso(userId: number, peso: number, notas: string 
       .insert({
         user_id: userId,
         peso_actual: peso,
-        notas: notas
+        notas: notas,
+        fecha: new Date().toLocaleDateString('en-CA')
       });
 
     if (error) {
@@ -129,7 +130,8 @@ export async function asentarComida(userId: number, descripcion: string, imagenU
           est_calorias: cal,
           est_proteina: prot,
           est_carbs: carb,
-          est_grasas: grasas
+          est_grasas: grasas,
+          fecha: new Date().toLocaleDateString('en-CA')
         });
 
       if (error) {
@@ -155,7 +157,8 @@ export async function registrarEntrenamiento(userId: number, rutina: string, wor
           user_id: userId,
           rutina_texto: rutina,
           workout_type: workoutType,
-          completado: completado
+          completado: completado,
+          fecha: new Date().toLocaleDateString('en-CA') // Asegurar fecha local
         })
         .select();
         
@@ -230,9 +233,10 @@ export async function registrarEjercicio(userId: number, workoutId: string, ejer
         user_id: userId,
         workout_id: workoutId,
         exercise_name: ejercicio.nombre,
-        sets: ejercicio.series,
-        reps: ejercicio.reps,
-        weight_kg: ejercicio.peso
+        sets: parseInt(ejercicio.series || ejercicio.sets || 0),
+        reps: parseInt(ejercicio.reps || 0),
+        weight_kg: parseFloat(ejercicio.peso || ejercicio.weight || 0),
+        fecha: new Date().toLocaleDateString('en-CA') // Asegurar fecha local
       });
 
     if (error) {
@@ -344,14 +348,13 @@ export async function obtenerHistorialChat(userId: number, limit: number = 12): 
  */
 export async function obtenerResumenNutricionalHoy(userId: number): Promise<{ calorias: number, proteina: number, carbs: number, grasas: number, registros: number } | null> {
   try {
-    const hoy = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
 
     const { data, error } = await supabase
       .from('meals_log')
       .select('est_calorias, est_proteina, est_carbs, est_grasas')
       .eq('user_id', userId)
-      .gte('created_at', `${hoy}T00:00:00`)
-      .lte('created_at', `${hoy}T23:59:59`);
+      .eq('fecha', hoy);
 
     if (error || !data || data.length === 0) return null;
 
@@ -416,12 +419,12 @@ export async function obtenerPromedioSemanal(userId: number, diasAtras: number =
  */
 export async function obtenerEntrenamientoHoy(userId: number): Promise<any | null> {
   try {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = new Date().toLocaleDateString('en-CA');
     const { data, error } = await supabase
       .from('workout_log')
       .select('*, exercise_logs(*)')
       .eq('user_id', userId)
-      .gte('created_at', `${hoy}T00:00:00`)
+      .eq('fecha', hoy)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

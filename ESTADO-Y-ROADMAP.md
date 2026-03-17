@@ -1,6 +1,6 @@
 # 🤖 Telegram Fitness Coach — Estado y Roadmap
 
-> **Last updated:** 2026-03-14 | Stack: Node.js + TypeScript · Telegraf · Supabase · Proxy LLM
+> **Last updated:** 2026-03-17 | Stack: Node.js + TypeScript · Telegraf · Supabase · Proxy LLM
 
 ---
 
@@ -11,6 +11,7 @@
 - [x] Onboarding wizard secuencial (`/start`) — edad, género, peso, altura, actividad, meta
 - [x] TDEE con fórmula Mifflin-St Jeor + macros automáticos (proteína 2.2g/kg, grasas 0.8g/kg)
 - [x] Persistencia completa en Supabase
+- [x] **Corrección de Esquema y Fechas Locales**: Columna `workout_type` añadida y normalización de fechas a `YYYY-MM-DD` local para evitar desajustes de zona horaria.
 
 ### Cerebro IA — aiService.ts
 - [x] **Memoria conversacional real**: inyecta los últimos 12 mensajes del historial como contexto OpenAI
@@ -21,7 +22,7 @@
 - [x] Función `generarReporteSemanal()` para los cron jobs (solicitud separada, no contamina chat_logs)
 
 ### Agente Autónomo — index.ts
-- [x] **Parser robusto de acciones**: tolera JSON multilinea (reemplaza regex frágil)
+- [x] **Parser robusto de acciones**: tolera JSON multilinea, insensible a mayúsculas ("ACCION:") y balanceo de llaves.
 - [x] **Confirmaciones visuales** de cada acción: `✅ Peso registrado: 80.5kg`
 - [x] `LOG_MEAL` · `LOG_EXERCISE` · `LOG_WEIGHT` · `UPDATE_PROFILE`
 

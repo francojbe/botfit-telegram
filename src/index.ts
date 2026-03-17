@@ -470,8 +470,8 @@ async function ejecutarAccionesAgente(
   const confirmaciones: string[] = [];
   let cleanMessage = rawMessage;
 
-  // Parser robusto: dividir por "ACCION:" y extraer JSON balanceando llaves
-  const partes = rawMessage.split(/ACCION:\s*/);
+  // Parser robusto: dividir por "ACCION:" (insensible a mayúsculas) y extraer JSON balanceando llaves
+  const partes = rawMessage.split(/ACCION:\s*/i);
 
   for (let i = 1; i < partes.length; i++) {
     const parte = partes[i].trim();
@@ -491,8 +491,13 @@ async function ejecutarAccionesAgente(
 
     const jsonStr = parte.substring(jsonStart, jsonEnd);
 
-    // Remover el tag completo del mensaje visible
-    cleanMessage = cleanMessage.replace(`ACCION: ${jsonStr}`, '').replace(`ACCION:${jsonStr}`, '').trim();
+    // Remover el tag completo del mensaje visible (insensible a mayúsculas)
+    const tagMatch = cleanMessage.match(/ACCION:\s*/i);
+    if (tagMatch) {
+      const startIndex = cleanMessage.toLowerCase().indexOf(tagMatch[0].toLowerCase());
+      // Intentamos remover desde el tag hasta el fin del JSON de forma precisa
+      cleanMessage = (cleanMessage.substring(0, startIndex) + cleanMessage.substring(startIndex + tagMatch[0].length + jsonStr.length)).trim();
+    }
 
     try {
       const action = JSON.parse(jsonStr);
@@ -514,19 +519,26 @@ async function ejecutarAccionesAgente(
 
         case 'LOG_EXERCISE': {
           let workout = await obtenerUltimoEntrenamiento(userId);
-          const hoy = new Date().toISOString().split('T')[0];
+          const hoy = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
 
-          if (!workout || new Date(workout.fecha).toISOString().split('T')[0] !== hoy) {
+          const workoutDate = workout ? new Date(workout.fecha).toLocaleDateString('en-CA') : null;
+
+          if (!workout || workoutDate !== hoy) {
+            console.log(`[Agente] No hay entrenamiento hoy o es de otro día. Creando Manuel.`);
             const newId = await registrarEntrenamiento(userId, 'Entrenamiento Manual', 'M', true);
             workout = { id: newId };
           }
 
           if (action.ejercicios && Array.isArray(action.ejercicios)) {
+            let guardados = 0;
             for (const ex of action.ejercicios) {
-              await registrarEjercicio(userId, (workout as any).id, ex);
+              const ok = await registrarEjercicio(userId, (workout as any).id, ex);
+              if (ok) guardados++;
             }
-            const lista = action.ejercicios.map((e: any) => `${e.nombre} ${e.peso ?? '?'}kg×${e.reps}`).join(', ');
-            confirmaciones.push(`✅ _Ejercicios guardados: ${lista}_`);
+            if (guardados > 0) {
+              const lista = action.ejercicios.map((e: any) => `${e.nombre} ${e.peso ?? '?'}kg×${e.reps}`).join(', ');
+              confirmaciones.push(`✅ _${guardados} ejercicios guardados: ${lista}_`);
+            }
           }
           break;
         }
