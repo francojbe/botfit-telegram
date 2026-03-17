@@ -86,8 +86,10 @@ export async function procesarMensaje(userId: number, mensaje: string, imageUrl?
   const userContext = await buildUserContext(userId);
 
   // Obtener historial conversacional para dar memoria real a la IA
-  const historial = await obtenerHistorialChat(userId, 12);
-  console.log(`[aiService] Historial cargado: ${historial.length} mensajes`);
+  // Reducir historial para Vision (fotos) para ahorrar tokens y evitar límites de rate
+  const bufferHistorial = imageUrl ? 4 : 12;
+  const historial = await obtenerHistorialChat(userId, bufferHistorial);
+  console.log(`[aiService] Historial cargado (${bufferHistorial} slots): ${historial.length} mensajes`);
 
   const systemPrompt = `
 Eres un COACH de fitness y nutrición de élite que trabaja por Telegram. Debes transformar al usuario usando ciencia, no motivación vacía.
@@ -196,6 +198,11 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
     return 'Recibí tu mensaje, pero mi conexión cerebral está lenta. ¿Puedes repetirlo?';
   } catch (error: any) {
     console.error('[aiService] Error en Proxy API:', error.response?.data || error.message);
+    
+    const esRateLimit = JSON.stringify(error.response?.data).includes('429') || error.message?.includes('429');
+    if (esRateLimit) {
+      return '⚠️ Mi cerebro está un poco saturado ahora mismo (límite de peticiones alcanzado). Intenta de nuevo en unos minutos.';
+    }
     return 'Tuve un problema técnico al procesar tu consulta. ¡Inténtalo de nuevo en un momento!';
   }
 }

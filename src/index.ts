@@ -416,7 +416,9 @@ bot.on('photo', async (ctx) => {
     const userId = ctx.from.id;
     await guardarMensaje(userId, 'user', '[FOTO ENVIADA]');
 
-    const foto = ctx.message.photo.pop();
+    // Tomar una versión intermedia de la foto (ni la miniatura de 90px ni la gigante de 1280px)
+    // Normalmente photo[2] o photo[1] es suficiente para visión (320-800px)
+    const foto = ctx.message.photo.length > 2 ? ctx.message.photo[2] : ctx.message.photo.pop();
     if (!foto) return;
 
     await ctx.reply('🔍 Analizando tu comida...');
