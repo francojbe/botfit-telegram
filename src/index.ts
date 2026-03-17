@@ -78,25 +78,39 @@ bot.start((ctx) => {
 });
 
 // Botones del teclado persistente → redirigen al comando correspondiente
-bot.hears('🏋️ Mi Rutina',          async (ctx) => { await handleRutina(ctx); });
-bot.hears('📊 Mi Día',            async (ctx) => {
-  (ctx as any).message.text = '/stats';
-  await ctx.telegram.sendChatAction(ctx.chat.id, 'typing');
-  // Simplemente ejecutamos el handler directamente
+bot.hears(/Mi Rutina/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Mi Rutina`);
+  await handleRutina(ctx);
+});
+
+bot.hears(/Mi Día/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Mi Día`);
+  // Intentamos imitar el comando /stats
   await handleStats(ctx);
 });
-bot.hears('👤 Mi Perfil',         async (ctx) => { await handlePerfil(ctx); });
-bot.hears('💬 Hablar con el Coach', async (ctx) => {
+
+bot.hears(/Mi Perfil/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Mi Perfil`);
+  await handlePerfil(ctx);
+});
+
+bot.hears(/Hablar con el Coach/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Hablar con el Coach`);
   await ctx.reply(
     '¡Hola! Escríbeme lo que quieras 💬\n\nPuedo ayudarte con:\n• Registrar comidas: _"Comí arroz con pollo"_\n• Registrar peso: _"Pesé 80kg"_\n• Registrar ejercicios: _"Hice sentadilla 50kg 10 reps"_\n• Preguntar cualquier cosa sobre entrenamiento o nutrición',
     { parse_mode: 'Markdown', ...MAIN_KEYBOARD }
   );
 });
-bot.hears('🔄 Reconfigurar Perfil', (ctx) => ctx.scene.enter('ONBOARDING_WIZARD'));
+
+bot.hears(/Reconfigurar Perfil/i, (ctx) => {
+  console.log(`[Bot] Botón presionado: Reconfigurar Perfil`);
+  ctx.scene.enter('ONBOARDING_WIZARD');
+});
 
 // ─── GOOGLE FIT ───────────────────────────────────────────────────────────────
 
-bot.hears('📱 Google Fit', async (ctx) => {
+bot.hears(/Google Fit/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Google Fit`);
   const userId = ctx.from.id;
   const conectado = await tieneConexionGoogleFit(userId);
 
@@ -164,7 +178,8 @@ bot.action('fit_reconectar', async (ctx) => {
 });
 
 // Botón "Mi Historial" → Submenú inline con 3 opciones
-bot.hears('📅 Mi Historial', async (ctx) => {
+bot.hears(/Mi Historial/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Mi Historial`);
   await ctx.reply(
     '📅 *¿Qué quieres revisar?*\nElige una opción:',
     {
@@ -305,7 +320,10 @@ async function handleRutina(ctx: any) {
 }
 
 // /stats → Resumen del día (nutrición + peso + entreno)
-bot.command('stats', async (ctx) => handleStats(ctx));
+bot.command('stats', async (ctx) => {
+  console.log(`[Stats] Comando /stats recibido`);
+  await handleStats(ctx);
+});
 
 async function handleStats(ctx: any) {
   try {

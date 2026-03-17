@@ -4,6 +4,7 @@ import { crearUsuario } from '../../services/userService';
 // Teclado principal persistente (mismo que en index.ts)
 const MAIN_KEYBOARD = Markup.keyboard([
   ['🏋️ Mi Rutina', '📊 Mi Día'],
+  ['📅 Mi Historial', '📱 Google Fit'],
   ['👤 Mi Perfil', '💬 Hablar con el Coach'],
   ['🔄 Reconfigurar Perfil'],
 ]).resize();
