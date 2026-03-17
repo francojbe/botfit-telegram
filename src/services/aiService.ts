@@ -199,7 +199,8 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
   } catch (error: any) {
     console.error('[aiService] Error en Proxy API:', error.response?.data || error.message);
     
-    const esRateLimit = JSON.stringify(error.response?.data).includes('429') || error.message?.includes('429');
+    const errorStr = (error.response?.data ? JSON.stringify(error.response.data) : '') + (error.message || '');
+    const esRateLimit = errorStr.includes('429');
     if (esRateLimit) {
       return '⚠️ Mi cerebro está un poco saturado ahora mismo (límite de peticiones alcanzado). Intenta de nuevo en unos minutos.';
     }
