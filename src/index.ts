@@ -1,5 +1,5 @@
+import { config } from './config';
 import { Telegraf, session, Scenes, Markup } from 'telegraf';
-import * as dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
 import express from 'express';
@@ -32,18 +32,9 @@ import {
   formatearDatosFit
 } from './services/googleFitService';
 
-// Cargar variables de entorno
-const envPath = path.resolve(__dirname, '../.env');
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-  console.log('[Bot] .env cargado correctamente');
-} else {
-  console.log('[Bot] No se encontró .env en: ' + envPath);
-}
-
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const BOT_TOKEN = config.telegramToken;
 if (!BOT_TOKEN) {
-  console.error('ERROR CRÍTICO: TELEGRAM_BOT_TOKEN no configurado en .env');
+  console.error('ERROR CRÍTICO: TELEGRAM_BOT_TOKEN no configurado.');
   process.exit(1);
 }
 

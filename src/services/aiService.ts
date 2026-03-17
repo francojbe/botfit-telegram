@@ -1,7 +1,7 @@
 import axios from 'axios';
-import * as dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { config } from '../config';
 import {
   obtenerUsuario,
   obtenerUltimosEjercicios,
@@ -9,10 +9,8 @@ import {
   obtenerResumenNutricionalHoy
 } from './userService';
 
-dotenv.config();
-
-const PROXY_URL = process.env.PROXY_API_URL || 'https://recuperadora-api-ia-free.nojauc.easypanel.host/v1/chat/completions';
-const AUTH_SECRET = process.env.PROXY_AUTH_SECRET || 'mi_proxy_secreto';
+const PROXY_URL = config.proxyApiUrl;
+const AUTH_SECRET = config.proxyAuthSecret;
 
 // Cargar la metodología base para el System Prompt
 const metodologiaPath = path.resolve(__dirname, '../../metodologia.md');

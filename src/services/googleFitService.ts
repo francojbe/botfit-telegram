@@ -1,9 +1,10 @@
 import { google } from 'googleapis';
 import { supabase } from '../db/supabaseClient';
+import { config } from '../config';
 
-const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID!;
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!;
-const REDIRECT_URI  = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3456/auth/callback';
+const CLIENT_ID     = config.googleClientId;
+const CLIENT_SECRET = config.googleClientSecret;
+const REDIRECT_URI  = config.googleRedirectUri;
 
 export const SCOPES = [
   'https://www.googleapis.com/auth/fitness.activity.read',
