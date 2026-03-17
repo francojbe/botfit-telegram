@@ -540,7 +540,7 @@ async function ejecutarAccionesAgente(
           if (action.ejercicios && Array.isArray(action.ejercicios)) {
             let guardados = 0;
             for (const ex of action.ejercicios) {
-              const ok = await registrarEjercicio(userId, (workout as any).id, ex);
+              const ok = await registrarEjercicio(userId, (workout as any).id, ex, targetDate);
               if (ok) guardados++;
             }
             if (guardados > 0) {

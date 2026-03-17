@@ -228,8 +228,9 @@ export async function obtenerUsuario(userId: number): Promise<any | null> {
 /**
  * Registra un ejercicio individual de una rutina.
  */
-export async function registrarEjercicio(userId: number, workoutId: string, ejercicio: any): Promise<boolean> {
+export async function registrarEjercicio(userId: number, workoutId: string, ejercicio: any, fechaCustom?: string): Promise<boolean> {
   try {
+    const fecha = fechaCustom || new Date().toLocaleDateString('en-CA');
     const { error } = await supabase
       .from('exercise_logs')
       .insert({
@@ -239,7 +240,7 @@ export async function registrarEjercicio(userId: number, workoutId: string, ejer
         sets: parseInt(ejercicio.series || ejercicio.sets || 0),
         reps: parseInt(ejercicio.reps || 0),
         weight_kg: parseFloat(ejercicio.peso || ejercicio.weight || 0),
-        fecha: new Date().toLocaleDateString('en-CA') // Asegurar fecha local
+        fecha: fecha
       });
 
     if (error) {
