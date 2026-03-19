@@ -182,7 +182,7 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
         'Authorization': `Bearer ${AUTH_SECRET}`,
         'Content-Type': 'application/json'
       },
-      timeout: 50000
+      timeout: 60000 // Aumentar timeout por si el proxy va lento
     });
 
     const data = response.data as any;
@@ -199,8 +199,14 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
   } catch (error: any) {
     console.error('[aiService] Error en Proxy API:', error.response?.data || error.message);
     
+    const isNetworkError = error.code === 'EAI_AGAIN' || error.code === 'ECONNREFUSED' || error.message?.includes('timeout');
+    if (isNetworkError) {
+      return '⚠️ Mi conexión cerebral está fallando (error de red/DNS). Inténtalo de nuevo en un minuto.';
+    }
+
     const errorStr = (error.response?.data ? JSON.stringify(error.response.data) : '') + (error.message || '');
     const esRateLimit = errorStr.includes('429');
+    
     if (esRateLimit) {
       return '⚠️ Mi cerebro está un poco saturado ahora mismo (límite de peticiones alcanzado). Intenta de nuevo en unos minutos.';
     }
