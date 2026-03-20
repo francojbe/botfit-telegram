@@ -147,6 +147,13 @@ bot.hears(/Sincronizar Fit|Google Fit/i, async (ctx) => {
   );
 });
 
+// Helper para limpiar textos de usuario y evitar crasheos de Telegram Markdown V1
+function safeMD(text: string | null | undefined): string {
+  if (!text) return '';
+  return String(text).replace(/([_*\[\]`])/g, ' '); 
+}
+
+
 bot.action('fit_hoy', async (ctx) => {
   await ctx.answerCbQuery('Cargando datos...');
   const userId = ctx.from!.id;
@@ -157,7 +164,11 @@ bot.action('fit_hoy', async (ctx) => {
     const datos = await obtenerDatosDiarios(userId);
     const metaPasos = (userData?.neat_pasos_meta) || 8000;
     const mensaje = formatearDatosFit(datos, metaPasos);
-    await ctx.reply(mensaje, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    try {
+      await ctx.reply(mensaje, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    } catch {
+      await ctx.reply(safeMD(mensaje), MAIN_KEYBOARD);
+    }
   } catch (error: any) {
     console.error('[GoogleFit] Error:', error.message);
     await ctx.reply(
@@ -180,110 +191,124 @@ bot.action('fit_reconectar', async (ctx) => {
 // Botón "Historial" → Submenú inline con 3 opciones
 bot.hears(/Historial/i, async (ctx) => {
   console.log(`[Bot] Botón presionado: Historial`);
-  await ctx.reply(
-    '📅 *¿Qué quieres revisar?*\nElige una opción:',
-    {
-      parse_mode: 'Markdown',
-      ...Markup.inlineKeyboard([
-        [Markup.button.callback('🍽 Comidas (7 días)',      'hist_comidas')],
-        [Markup.button.callback('⚖️ Pesos (7 días)',        'hist_pesos')],
-        [Markup.button.callback('🏋️ Entrenos (7 días)',    'hist_entrenos')],
-      ])
-    }
-  );
+  const texto = '📅 *¿Qué quieres revisar?*\nElige una opción:';
+  const opciones = Markup.inlineKeyboard([
+    [Markup.button.callback('🍽 Comidas (7 días)',      'hist_comidas')],
+    [Markup.button.callback('⚖️ Pesos (7 días)',        'hist_pesos')],
+    [Markup.button.callback('🏋️ Entrenos (7 días)',    'hist_entrenos')],
+  ]);
+  try {
+    await ctx.reply(texto, { parse_mode: 'Markdown', ...opciones });
+  } catch (e) {
+    await ctx.reply(texto.replace(/\*/g, ''), opciones);
+  }
 });
 
 // ─── CALLBACKS HISTORIAL ─────────────────────────────────────────────────────
 
 bot.action('hist_comidas', async (ctx) => {
-  await ctx.answerCbQuery();
-  const userId = ctx.from!.id;
-  const comidas = await obtenerHistorialComidas(userId, 7);
+  try {
+    await ctx.answerCbQuery();
+    const userId = ctx.from!.id;
+    const comidas = await obtenerHistorialComidas(userId, 7);
 
-  if (!comidas.length) {
-    return ctx.reply('📭 No tienes comidas registradas en los últimos 7 días.\nEscríbeme lo que comes y lo registro automáticamente.', MAIN_KEYBOARD);
-  }
-
-  // Agrupar por día
-  const porDia: Record<string, typeof comidas> = {};
-  for (const c of comidas) {
-    const dia = new Date(c.created_at).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
-    if (!porDia[dia]) porDia[dia] = [];
-    porDia[dia].push(c);
-  }
-
-  let msg = '🍽 *Tus comidas — últimos 7 días*\n';
-  for (const [dia, items] of Object.entries(porDia)) {
-    const totalCal = items.reduce((s, x) => s + (x.est_calorias || 0), 0);
-    const totalProt = items.reduce((s, x) => s + (x.est_proteina || 0), 0);
-    msg += `\n📆 *${dia}* — ${totalCal} kcal · ${totalProt}g prot\n`;
-    for (const c of items) {
-      msg += `  • ${c.descripcion_original}\n`;
+    if (!comidas.length) {
+      return ctx.reply('📭 No tienes comidas registradas en los últimos 7 días.\nEscríbeme lo que comes y lo registro automáticamente.', MAIN_KEYBOARD);
     }
-  }
 
-  await ctx.reply(msg, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    // Agrupar por día
+    const porDia: Record<string, typeof comidas> = {};
+    for (const c of comidas) {
+      const dia = new Date(c.created_at).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+      if (!porDia[dia]) porDia[dia] = [];
+      porDia[dia].push(c);
+    }
+
+    let msg = '🍽 *Tus comidas — últimos 7 días*\n';
+    for (const [dia, items] of Object.entries(porDia)) {
+      const totalCal = items.reduce((s, x) => s + (x.est_calorias || 0), 0);
+      const totalProt = items.reduce((s, x) => s + (x.est_proteina || 0), 0);
+      msg += `\n📆 *${dia}* — ${totalCal} kcal · ${totalProt}g prot\n`;
+      for (const c of items) {
+        msg += `  • ${safeMD(c.descripcion_original)}\n`;
+      }
+    }
+
+    await ctx.reply(msg, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+  } catch (err: any) {
+    console.error('[Action hist_comidas] Error:', err);
+    await ctx.reply('❌ Algo falló al cargar tu historial. Vuelve a intentarlo.', MAIN_KEYBOARD);
+  }
 });
 
 bot.action('hist_pesos', async (ctx) => {
-  await ctx.answerCbQuery();
-  const userId = ctx.from!.id;
-  const pesos = await obtenerHistorialPesos(userId, 7);
+  try {
+    await ctx.answerCbQuery();
+    const userId = ctx.from!.id;
+    const pesos = await obtenerHistorialPesos(userId, 7);
 
-  if (!pesos.length) {
-    return ctx.reply('📭 No tienes pesos registrados en los últimos 7 días.\nDime "hoy peso 80kg" para registrarlo.', MAIN_KEYBOARD);
+    if (!pesos.length) {
+      return ctx.reply('📭 No tienes pesos registrados en los últimos 7 días.\nDime "hoy peso 80kg" para registrarlo.', MAIN_KEYBOARD);
+    }
+
+    let msg = '⚖️ *Tus registros de peso — últimos 7 días*\n\n';
+    const primero = pesos[pesos.length - 1]?.peso_actual;
+    const ultimo  = pesos[0]?.peso_actual;
+    const diff = primero && ultimo ? (ultimo - primero).toFixed(1) : null;
+
+    for (const p of pesos) {
+      const fecha = new Date(p.created_at).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+      msg += `📆 ${fecha}: *${p.peso_actual} kg*`;
+      if (p.notas) msg += ` — _${safeMD(p.notas)}_`;
+      msg += '\n';
+    }
+
+    if (diff !== null) {
+      const emoji = parseFloat(diff) < 0 ? '📉' : parseFloat(diff) > 0 ? '📈' : '➡️';
+      msg += `\n${emoji} Variación del período: *${parseFloat(diff) > 0 ? '+' : ''}${diff} kg*`;
+    }
+
+    await ctx.reply(msg, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+  } catch (err: any) {
+    console.error('[Action hist_pesos] Error:', err);
+    await ctx.reply('❌ Algo falló al cargar tus pesos. Vuelve a intentarlo.', MAIN_KEYBOARD);
   }
-
-  let msg = '⚖️ *Tus registros de peso — últimos 7 días*\n\n';
-  const primero = pesos[pesos.length - 1]?.peso_actual;
-  const ultimo  = pesos[0]?.peso_actual;
-  const diff = primero && ultimo ? (ultimo - primero).toFixed(1) : null;
-
-  for (const p of pesos) {
-    const fecha = new Date(p.created_at).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
-    msg += `📆 ${fecha}: *${p.peso_actual} kg*`;
-    if (p.notas) msg += ` — _${p.notas}_`;
-    msg += '\n';
-  }
-
-  if (diff !== null) {
-    const emoji = parseFloat(diff) < 0 ? '📉' : parseFloat(diff) > 0 ? '📈' : '➡️';
-    msg += `\n${emoji} Variación del período: *${parseFloat(diff) > 0 ? '+' : ''}${diff} kg*`;
-  }
-
-  await ctx.reply(msg, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
 });
 
 bot.action('hist_entrenos', async (ctx) => {
-  await ctx.answerCbQuery();
-  const userId = ctx.from!.id;
-  const entrenos = await obtenerHistorialEntrenos(userId, 7);
+  try {
+    await ctx.answerCbQuery();
+    const userId = ctx.from!.id;
+    const entrenos = await obtenerHistorialEntrenos(userId, 7);
 
-  if (!entrenos.length) {
-    return ctx.reply('📭 No tienes entrenamientos registrados en los últimos 7 días.\nUsa el botón 🏋️ Entrenar Hoy para empezar.', MAIN_KEYBOARD);
-  }
-
-  let msg = '🏋️ *Tus entrenamientos — últimos 7 días*\n';
-  for (const e of entrenos) {
-    const fecha = new Date(e.created_at).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
-    const estado = e.completado ? '✅' : '⏸';
-    msg += `\n${estado} *${fecha}* — Día ${e.workout_type || '?'}: ${e.rutina_texto}\n`;
-    if (e.exercise_logs && e.exercise_logs.length > 0) {
-      for (const ex of e.exercise_logs.slice(0, 4)) {
-        msg += `  └ ${ex.exercise_name}: ${ex.weight_kg ?? '?'}kg × ${ex.reps ?? '?'} reps\n`;
-      }
-      if (e.exercise_logs.length > 4) msg += `  └ ...y ${e.exercise_logs.length - 4} ejercicios más\n`;
+    if (!entrenos.length) {
+      return ctx.reply('📭 No tienes entrenamientos registrados en los últimos 7 días.\nUsa el botón 🏋️ Entrenar Hoy para empezar.', MAIN_KEYBOARD);
     }
-  }
 
-  await ctx.reply(msg, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    let msg = '🏋️ *Tus entrenamientos — últimos 7 días*\n';
+    for (const e of entrenos) {
+      const fecha = new Date(e.created_at).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' });
+      const estado = e.completado ? '✅' : '⏸';
+      msg += `\n${estado} *${fecha}* — Día ${e.workout_type || '?'}: ${safeMD(e.rutina_texto)}\n`;
+      if (e.exercise_logs && e.exercise_logs.length > 0) {
+        for (const ex of e.exercise_logs.slice(0, 4)) {
+          msg += `  └ ${safeMD(ex.exercise_name)}: ${ex.weight_kg ?? '?'}kg × ${ex.reps ?? '?'} reps\n`;
+        }
+        if (e.exercise_logs.length > 4) msg += `  └ ...y ${e.exercise_logs.length - 4} ejercicios más\n`;
+      }
+    }
+
+    await ctx.reply(msg, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+  } catch (err: any) {
+    console.error('[Action hist_entrenos] Error:', err);
+    await ctx.reply('❌ Algo falló al cargar tus entrenamientos. Vuelve a intentarlo.', MAIN_KEYBOARD);
+  }
 });
 
 
 // /help → Lista de comandos
-bot.help((ctx) => {
-  ctx.reply(
-    '🤖 *Coach de Fitness IA*\n\n' +
+bot.help(async (ctx) => {
+  const texto = '🤖 *Coach de Fitness IA*\n\n' +
     'Usa los botones del menú de abajo para todo 👇\n\n' +
     '🏋️ *Entrenar Hoy* — Tu entrenamiento del día\n' +
     '📊 *Mi Día* — Resumen de calorías y actividad\n' +
@@ -292,9 +317,12 @@ bot.help((ctx) => {
     '👤 *Mi Perfil* — Ver tu perfil y ajustar metas\n' +
     '⚙️ *Sincronizar Fit* — Conectar smartwatch\n\n' +
     '_También puedes escribirme directamente:_\n' +
-    '_"Hoy pesé 80kg"_ | _"Desayuné avena"_ | _"Duda: ¿hago cardio antes o después?"_',
-    { parse_mode: 'Markdown', ...MAIN_KEYBOARD }
-  );
+    '_"Hoy pesé 80kg"_ | _"Desayuné avena"_ | _"Duda: ¿hago cardio antes o después?"_';
+  try {
+    await ctx.reply(texto, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+  } catch(e) {
+    await ctx.reply(safeMD(texto), MAIN_KEYBOARD);
+  }
 });
 
 // /rutina → Entrenamiento del día con sobrecarga progresiva
@@ -310,7 +338,7 @@ async function handleRutina(ctx: any) {
     const message = await generateWorkoutMessage(userId, routine, userData);
 
     await registrarEntrenamiento(userId, `Día ${routine.day}: ${routine.name}`, routine.day, false);
-    await ctx.replyWithHTML(message + `\n\n_Registra tu progreso escribiéndome: "Sentadilla 50kg 8 reps"_`);
+    await ctx.replyWithHTML(message + `\n\n<i>Registra tu progreso escribiéndome: "Sentadilla 50kg 8 reps"</i>`);
     // Mostrar teclado principal después del mensaje de rutina
     await ctx.reply('¿Qué más necesitas?', MAIN_KEYBOARD);
   } catch (error: any) {
@@ -329,7 +357,13 @@ async function handleProgreso(ctx: any) {
     await ctx.reply('📈 *Analizando tus datos de los últimos 14 días...* \nAguarda un momento mientras reviso tus tendencias.', { parse_mode: 'Markdown' });
 
     const analisis = await generarAnalisisProgreso(userId);
-    await ctx.reply(analisis, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    
+    try {
+      await ctx.reply(analisis, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    } catch (e) {
+      console.warn('[Cmd /progreso] Error de parse_mode, enviando texto plano:', e);
+      await ctx.reply(analisis, MAIN_KEYBOARD);
+    }
   } catch (error) {
     console.error('[Cmd /progreso] Error:', error);
     await ctx.reply('No pude generar tu reporte de progreso ahora mismo. ❌', MAIN_KEYBOARD);
@@ -373,10 +407,10 @@ async function handleStats(ctx: any) {
     // Bloque de entrenamiento
     if (entrenoHoy) {
       mensaje += `🏋️ *Entrenamiento*\n`;
-      mensaje += `• Completaste: ${entrenoHoy.rutina_texto || 'Entrenamiento'}\n`;
+      mensaje += `• Completaste: ${safeMD(entrenoHoy.rutina_texto) || 'Entrenamiento'}\n`;
       if (entrenoHoy.exercise_logs && entrenoHoy.exercise_logs.length > 0) {
         entrenoHoy.exercise_logs.slice(0, 3).forEach((ex: any) => {
-          mensaje += `  └ ${ex.exercise_name}: ${ex.weight_kg}kg × ${ex.reps} reps\n`;
+          mensaje += `  └ ${safeMD(ex.exercise_name)}: ${ex.weight_kg}kg × ${ex.reps} reps\n`;
         });
       }
       mensaje += '\n';
@@ -386,7 +420,11 @@ async function handleStats(ctx: any) {
 
     mensaje += `_Sigue registrando todo para que el análisis sea más preciso._`;
 
-    await ctx.reply(mensaje, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    try {
+      await ctx.reply(mensaje, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    } catch(e) {
+      await ctx.reply(safeMD(mensaje), MAIN_KEYBOARD);
+    }
   } catch (error: any) {
     console.error('[Cmd /stats] Error:', error);
     await ctx.reply('Error generando el resumen. Intenta de nuevo.', MAIN_KEYBOARD);
@@ -405,22 +443,24 @@ async function handlePerfil(ctx: any) {
       return ctx.reply('No tienes perfil aún. Usa /start para crearlo.');
     }
 
-    await ctx.reply(
-      `👤 *Tu Perfil Actual*\n\n` +
+    const texto = `👤 *Tu Perfil Actual*\n\n` +
       `• Objetivo: ${userData.objetivo}\n` +
       `• Peso inicial: ${userData.peso_inicial}kg\n` +
       `• Altura: ${userData.altura}cm\n` +
       `• Edad: ${userData.edad} años\n\n` +
       `🎯 *Metas Diarias*\n` +
       `• Calorías: ${userData.calorias_meta} kcal\n` +
-      `• Proteína: ${userData.proteina_meta}g\n`,
-      {
-        parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('🔄 Ajustar mis datos', 'reconfigurar_perfil')]
-        ])
-      }
-    );
+      `• Proteína: ${userData.proteina_meta}g\n`;
+      
+    const opciones = Markup.inlineKeyboard([
+      [Markup.button.callback('🔄 Ajustar mis datos', 'reconfigurar_perfil')]
+    ]);
+
+    try {
+      await ctx.reply(texto, { parse_mode: 'Markdown', ...opciones });
+    } catch (e) {
+      await ctx.reply(safeMD(texto), opciones);
+    }
   } catch (error: any) {
     console.error('[Cmd /perfil] Error:', error);
     await ctx.reply('Error obteniendo tu perfil.', MAIN_KEYBOARD);
@@ -452,7 +492,13 @@ bot.on('photo', async (ctx) => {
 
     const respuestaFinal = [cleanMessage, ...confirmaciones].filter(Boolean).join('\n');
     await guardarMensaje(userId, 'assistant', cleanMessage);
-    await ctx.reply(respuestaFinal, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    
+    try {
+      await ctx.reply(respuestaFinal, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    } catch (e) {
+      console.warn('[Bot] Error de parse_mode en foto, enviando texto plano:', e);
+      await ctx.reply(respuestaFinal, MAIN_KEYBOARD);
+    }
   } catch (error) {
     console.error('[Bot] Error analizando foto:', error);
     await ctx.reply('Error analizando la foto. Intenta de nuevo.');
@@ -476,8 +522,14 @@ bot.on('text', async (ctx) => {
 
     const respuestaFinal = [cleanMessage, ...confirmaciones].filter(Boolean).join('\n');
     await guardarMensaje(userId, 'assistant', cleanMessage);
-    // Mostrar el teclado junto con la respuesta
-    await ctx.reply(respuestaFinal, MAIN_KEYBOARD);
+    
+    // Mostrar el teclado junto con la respuesta, intentar en Markdown primero
+    try {
+      await ctx.reply(respuestaFinal, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+    } catch (e) {
+      console.warn('[Bot] Error de parse_mode en texto, enviando texto plano:', e);
+      await ctx.reply(respuestaFinal, MAIN_KEYBOARD);
+    }
   } catch (error) {
     console.error('[Bot] Error procesando texto:', error);
     await ctx.reply('Error procesando tu mensaje. Intenta de nuevo.', MAIN_KEYBOARD);
