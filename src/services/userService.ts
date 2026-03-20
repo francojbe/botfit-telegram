@@ -202,6 +202,31 @@ export async function obtenerUltimoEntrenamiento(userId: number): Promise<any | 
 
 
 /**
+ * Obtiene la última rutina PROGRAMADA (A, B o C) registrada por un usuario.
+ * Ignora entrenamientos tipo 'M' (Manual/Extra).
+ */
+export async function obtenerUltimaRutinaProgramada(userId: number): Promise<any | null> {
+  try {
+    const { data, error } = await supabase
+      .from('workout_log')
+      .select('*')
+      .eq('user_id', userId)
+      .in('workout_type', ['A', 'B', 'C'])
+      .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      return null;
+    }
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
  * Obtiene los datos de un usuario por su Telegram ID.
  */
 export async function obtenerUsuario(userId: number): Promise<any | null> {
@@ -230,7 +255,32 @@ export async function obtenerUsuario(userId: number): Promise<any | null> {
  */
 export async function registrarEjercicio(userId: number, workoutId: string, ejercicio: any, fechaCustom?: string): Promise<boolean> {
   try {
+    const peso = parseFloat(ejercicio.peso || ejercicio.weight || 0);
+    const reps = parseInt(ejercicio.reps || 0);
+
+    // Evitar registrar basura (0kg y 0 reps)
+    if (peso === 0 && reps === 0) {
+      console.warn(`[UserService] Intento de registrar ejercicio vacío en ${workoutId}. Saltando.`);
+      return false;
+    }
+
+    // 🔥 DEDUPLICACIÓN: No registrar exactamente lo mismo dos veces en la misma ejecución
+    const { data: existing } = await supabase
+      .from('exercise_logs')
+      .select('id')
+      .eq('workout_id', workoutId)
+      .eq('exercise_name', ejercicio.nombre)
+      .eq('weight_kg', peso)
+      .eq('reps', reps)
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      console.log(`[UserService] Ejercicio "${ejercicio.nombre}" ya existe en este workout. Saltando duplicado.`);
+      return true; // Retornamos true para no generar error al bot
+    }
+
     const fecha = fechaCustom || new Date().toLocaleDateString('en-CA');
+
     const { error } = await supabase
       .from('exercise_logs')
       .insert({
@@ -238,8 +288,8 @@ export async function registrarEjercicio(userId: number, workoutId: string, ejer
         workout_id: workoutId,
         exercise_name: ejercicio.nombre,
         sets: parseInt(ejercicio.series || ejercicio.sets || 0),
-        reps: parseInt(ejercicio.reps || 0),
-        weight_kg: parseFloat(ejercicio.peso || ejercicio.weight || 0),
+        reps: reps,
+        weight_kg: peso,
         fecha: fecha
       });
 
@@ -264,7 +314,9 @@ export async function obtenerUltimoEsfuerzo(userId: number, exerciseName: string
       .select('*')
       .eq('user_id', userId)
       .eq('exercise_name', exerciseName)
+      .gt('weight_kg', 0) // 🔥 SOLO con peso real
       .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .single();
 

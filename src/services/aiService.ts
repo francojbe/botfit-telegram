@@ -6,7 +6,10 @@ import {
   obtenerUsuario,
   obtenerUltimosEjercicios,
   obtenerHistorialChat,
-  obtenerResumenNutricionalHoy
+  obtenerResumenNutricionalHoy,
+  obtenerHistorialComidas,
+  obtenerHistorialPesos,
+  obtenerHistorialEntrenos
 } from './userService';
 
 const PROXY_URL = config.proxyApiUrl;
@@ -122,11 +125,13 @@ Incluye TODOS los que apliquen según el mensaje del usuario.
 1. Analiza siempre los datos del usuario ANTES de responder. Personaliza cada respuesta.
 2. Si el usuario envía una FOTO de comida, usa visión artificial para identificar ingredientes y porciones. Estima calorías/macros y genera SIEMPRE un LOG_MEAL.
 3. Si el usuario menciona una comida por texto (aunque sea vagamente), estima macros y lanza LOG_MEAL.
-4. Si menciona un ejercicio con peso/reps, lanza LOG_EXERCISE.
-5. Si menciona su peso corporal, lanza LOG_WEIGHT.
-6. Respuestas CORTAS y DIRECTAS (máx 200 palabras), estilo coach profesional. Sin emojis excesivos.
-7. NUNCA expliques al usuario que estás ejecutando acciones, solo hazlo.
-8. Nunca muestres los tags ACCION: en la parte visible del mensaje; solo escríbelos al final.
+4. Si menciona un ejercicio con peso/reps REALIZADOS, lanza LOG_EXERCISE. 
+5. 🔥 REGLA ANTI-DUPLICADOS: NUNCA generes una ACCION si el dato ya aparece en el historial como registrado. NO generes acciones cuando estés RESUMIENDO el día o el historial. Los tags de acción son solo para el MOMENTO exacto del registro inicial.
+6. 🔥 NO REGISTRES RUTINAS TEÓRICAS: No uses LOG_EXERCISE cuando sugieras qué entrenamiento hacer o expliques la rutina. Solo úsalo cuando el usuario confirme el éxito de la serie (pesos reales > 0).
+7. Si menciona su peso corporal, lanza LOG_WEIGHT.
+8. Respuestas CORTAS y DIRECTAS (máx 200 palabras), estilo coach profesional. Sin emojis excesivos.
+9. NUNCA expliques al usuario que estás ejecutando acciones, solo hazlo.
+10. Nunca muestres los tags ACCION: en la parte visible del mensaje; solo escríbelos al final.
 `;
 
   try {
@@ -262,5 +267,88 @@ Redacta un mensaje de coaching semanal: analiza el progreso, da una conclusión 
     return data?.choices?.[0]?.message?.content || '📊 Check-in semanal: ¡Sigue registrando tu peso para que pueda analizar tu progreso!';
   } catch (e) {
     return '📊 Check-in semanal: ¡Sigue registrando tu peso todos los días para que pueda analizar tu tendencia!';
+  }
+}
+
+/**
+ * Genera un análisis profundo de progreso basado en los últimos 14 días.
+ * Analiza: tendencia de peso, cumplimiento de macros y volumen de entrenamiento.
+ */
+export async function generarAnalisisProgreso(userId: number): Promise<string> {
+  console.log(`[aiService] Generando análisis de progreso profundo para ${userId}...`);
+  
+  const [userData, comidas, pesos, entrenos] = await Promise.all([
+    obtenerUsuario(userId),
+    obtenerHistorialComidas(userId, 14),
+    obtenerHistorialPesos(userId, 14),
+    obtenerHistorialEntrenos(userId, 14)
+  ]);
+
+  if (!comidas.length && !pesos.length && !entrenos.length) {
+    return "📈 *Todavía no tengo suficientes datos para un análisis profundo.*\n\nSigue registrando tus comidas, entrenamientos y peso durante unos días más para que pueda mostrarte tus tendencias reales.";
+  }
+
+  // Preparar resumen para la IA
+  let dataContext = `═══ HISTORIAL DE LOS ÚLTIMOS 14 DÍAS ═══\n`;
+  
+  if (pesos.length > 0) {
+    dataContext += `\n⚖️ REGISTROS DE PESO:\n`;
+    pesos.forEach(p => {
+      dataContext += `- ${new Date(p.created_at).toLocaleDateString('es-CL')}: ${p.peso_actual}kg\n`;
+    });
+  }
+
+  if (comidas.length > 0) {
+    dataContext += `\n🍽 CONSUMO NUTRICIONAL (Promedios encontrados):\n`;
+    const totalCal = comidas.reduce((s, c) => s + (c.est_calorias || 0), 0);
+    const avgCal = Math.round(totalCal / comidas.length);
+    dataContext += `- Promedio de calorías por registro: ${avgCal} kcal\n`;
+    dataContext += `- Total registros de comida: ${comidas.length}\n`;
+  }
+
+  if (entrenos.length > 0) {
+    dataContext += `\n🏋️ ACTIVIDAD FÍSICA:\n`;
+    entrenos.forEach(e => {
+      dataContext += `- ${new Date(e.created_at).toLocaleDateString('es-CL')}: Rutina ${e.workout_type || '?'} (${e.completado ? 'Completada' : 'No terminada'})\n`;
+      if (e.exercise_logs) {
+        e.exercise_logs.forEach((ex: any) => {
+          dataContext += `  └ ${ex.exercise_name}: ${ex.weight_kg}kg x ${ex.reps}\n`;
+        });
+      }
+    });
+  }
+
+  const systemPrompt = `Eres un ANALISTA DE PROGRESO y COACH de élite. 
+Recibirás los datos de los últimos 14 días de un usuario.
+Tu objetivo es:
+1. Identificar la tendencia del peso (¿baja, sube o estable?).
+2. Analizar si la alimentación está alineada con el objetivo (${userData?.objetivo}).
+3. Identificar mejoras en la fuerza (si levantó más peso o hizo más reps en ejercicios iguales).
+4. Dar 3 RECOMENDACIONES TÉCNICAS concretas para la próxima semana.
+5. Dar un mensaje de CIERRE MOTIVADOR pero real (basado en sus datos).
+
+ESTILO: Directo, técnico, profesional, sin rellenos. Máximo 250 palabras.
+Usa Markdown (negritas, listas) para que sea legible en Telegram.`;
+
+  try {
+    const response = await axios.post(PROXY_URL, {
+      model: 'multi-ia-proxy',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: dataContext }
+      ],
+      stream: false
+    }, {
+      headers: {
+        'Authorization': `Bearer ${AUTH_SECRET}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 60000
+    });
+
+    return (response.data as any)?.choices?.[0]?.message?.content || '⚠️ No pude generar el análisis en este momento.';
+  } catch (error) {
+    console.error('[aiService] Error en generarAnalisisProgreso:', error);
+    return '❌ Hubo un error al procesar tu historial. Intenta de nuevo en un momento.';
   }
 }

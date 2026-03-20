@@ -1,6 +1,6 @@
 # 🤖 Telegram Fitness Coach — Estado y Roadmap
 
-> **Last updated:** 2026-03-17 | Stack: Node.js + TypeScript · Telegraf · Supabase · Proxy LLM
+> **Last updated:** 2026-03-19 | Stack: Node.js + TypeScript · Telegraf · Supabase · Proxy LLM
 
 ---
 
@@ -37,13 +37,14 @@
 - [x] **Check-in semanal real** (domingos 10:00): lee todos los usuarios en BD, calcula promedio de peso semanal, genera reporte personalizado con IA, envía por Telegram
 - [x] **Recordatorio NEAT** (L-V 13:00): mensajes rotatorios sobre pasos, agua, proteína
 
+### UX & Coaching (Nuevo)
+- [x] **Rediseño Mentalidad Coach**: Teclado simplificado de 6 botones esenciales (🏋️ Entrenar Hoy, 📊 Mi Día, 📈 Mi Progreso, 📅 Historial, 👤 Mi Perfil, ⚙️ Sincronizar Fit).
+- [x] **Submenú de Historial**: Acceso rápido a las últimas comidas, pesos y entrenamientos registrados.
+- [x] **Análisis de Avances (IA)**: El comando `/progreso` ahora genera un reporte técnico de 14 días analizando tendencias de peso y fuerza.
+
 ---
 
 ## 🔮 PRÓXIMAS MEJORAS (Backlog)
-
-### Media prioridad
-- [ ] **Comando `/progreso`**: subir fotos frente/perfil/espalda → guardar en Supabase Storage → feedback visual de la IA
-- [ ] **Comando `/historial`**: mostrar últimas comidas y pesos de los últimos 7 días en formato legible
 
 ### Baja prioridad
 - [ ] **Dashboard Web (Next.js)**: gráficas de peso, calorías vs. meta, galería de progreso, fecha estimada de llegada a meta

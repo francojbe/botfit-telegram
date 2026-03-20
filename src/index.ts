@@ -6,7 +6,7 @@ import express from 'express';
 import authRouter from './routes/authRouter';
 
 // Importar servicios compartidos y flujos
-import { procesarMensaje, analizarFoto } from './services/aiService';
+import { procesarMensaje, analizarFoto, generarAnalisisProgreso } from './services/aiService';
 import {
   asentarComida,
   registrarEntrenamiento,
@@ -47,11 +47,11 @@ bot.use(session());
 bot.use(stage.middleware());
 
 // ─── TECLADO PRINCIPAL (siempre visible) ────────────────────────────────────
+// Diseño limpio y enfocado a la acción (Mentalidad Coach)
 export const MAIN_KEYBOARD = Markup.keyboard([
-  ['🏋️ Mi Rutina', '📊 Mi Día'],
-  ['📅 Mi Historial', '📱 Google Fit'],
-  ['👤 Mi Perfil', '💬 Hablar con el Coach'],
-  ['🔄 Reconfigurar Perfil'],
+  ['🏋️ Entrenar Hoy', '📊 Mi Día'],
+  ['📈 Mi Progreso', '📅 Historial'],
+  ['👤 Mi Perfil', '⚙️ Sincronizar Fit']
 ]).resize();
 // "resize" hace el teclado compacto y no ocupa toda la pantalla
 
@@ -79,8 +79,8 @@ bot.start((ctx) => {
 });
 
 // Botones del teclado persistente → redirigen al comando correspondiente
-bot.hears(/Mi Rutina/i, async (ctx) => {
-  console.log(`[Bot] Botón presionado: Mi Rutina`);
+bot.hears(/Entrenar Hoy|Mi Rutina/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Entrenar Hoy`);
   await handleRutina(ctx);
 });
 
@@ -95,23 +95,22 @@ bot.hears(/Mi Perfil/i, async (ctx) => {
   await handlePerfil(ctx);
 });
 
-bot.hears(/Hablar con el Coach/i, async (ctx) => {
-  console.log(`[Bot] Botón presionado: Hablar con el Coach`);
-  await ctx.reply(
-    '¡Hola! Escríbeme lo que quieras 💬\n\nPuedo ayudarte con:\n• Registrar comidas: _"Comí arroz con pollo"_\n• Registrar peso: _"Pesé 80kg"_\n• Registrar ejercicios: _"Hice sentadilla 50kg 10 reps"_\n• Preguntar cualquier cosa sobre entrenamiento o nutrición',
-    { parse_mode: 'Markdown', ...MAIN_KEYBOARD }
-  );
+bot.hears(/Mi Progreso/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Mi Progreso`);
+  await handleProgreso(ctx);
 });
 
-bot.hears(/Reconfigurar Perfil/i, (ctx) => {
-  console.log(`[Bot] Botón presionado: Reconfigurar Perfil`);
+// Listener del Inline Button para reconfigurar perfil
+bot.action('reconfigurar_perfil', (ctx) => {
+  console.log(`[Bot] Botón inline presionado: Reconfigurar Perfil`);
+  ctx.answerCbQuery();
   ctx.scene.enter('ONBOARDING_WIZARD');
 });
 
 // ─── GOOGLE FIT ───────────────────────────────────────────────────────────────
 
-bot.hears(/Google Fit/i, async (ctx) => {
-  console.log(`[Bot] Botón presionado: Google Fit`);
+bot.hears(/Sincronizar Fit|Google Fit/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Sincronizar Fit`);
   const userId = ctx.from.id;
   const conectado = await tieneConexionGoogleFit(userId);
 
@@ -124,7 +123,7 @@ bot.hears(/Google Fit/i, async (ctx) => {
       '1️⃣ Pulsa el botón de abajo\n' +
       '2️⃣ Inicia sesión con tu Google\n' +
       '3️⃣ Acepta los permisos\n' +
-      '4️⃣ Vuelve aquí y presiona 📱 Google Fit de nuevo',
+      '4️⃣ Vuelve aquí y presiona ⚙️ Sincronizar Fit de nuevo',
       {
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([
@@ -178,9 +177,9 @@ bot.action('fit_reconectar', async (ctx) => {
   );
 });
 
-// Botón "Mi Historial" → Submenú inline con 3 opciones
-bot.hears(/Mi Historial/i, async (ctx) => {
-  console.log(`[Bot] Botón presionado: Mi Historial`);
+// Botón "Historial" → Submenú inline con 3 opciones
+bot.hears(/Historial/i, async (ctx) => {
+  console.log(`[Bot] Botón presionado: Historial`);
   await ctx.reply(
     '📅 *¿Qué quieres revisar?*\nElige una opción:',
     {
@@ -261,7 +260,7 @@ bot.action('hist_entrenos', async (ctx) => {
   const entrenos = await obtenerHistorialEntrenos(userId, 7);
 
   if (!entrenos.length) {
-    return ctx.reply('📭 No tienes entrenamientos registrados en los últimos 7 días.\nUsa el botón 🏋️ Mi Rutina para empezar.', MAIN_KEYBOARD);
+    return ctx.reply('📭 No tienes entrenamientos registrados en los últimos 7 días.\nUsa el botón 🏋️ Entrenar Hoy para empezar.', MAIN_KEYBOARD);
   }
 
   let msg = '🏋️ *Tus entrenamientos — últimos 7 días*\n';
@@ -286,14 +285,14 @@ bot.help((ctx) => {
   ctx.reply(
     '🤖 *Coach de Fitness IA*\n\n' +
     'Usa los botones del menú de abajo para todo 👇\n\n' +
-    '🏋️ *Mi Rutina* — Tu entrenamiento del día\n' +
+    '🏋️ *Entrenar Hoy* — Tu entrenamiento del día\n' +
     '📊 *Mi Día* — Resumen de calorías y actividad\n' +
-    '👤 *Mi Perfil* — Ver tu perfil y metas\n' +
-    '💬 *Hablar con el Coach* — Chat libre de nutrición y entreno\n' +
-    '🔄 *Reconfigurar Perfil* — Modificar tus datos\n\n' +
+    '📈 *Mi Progreso* — Análisis IA de tus resultados\n' +
+    '📅 *Historial* — Tus últimas comidas y entrenos\n' +
+    '👤 *Mi Perfil* — Ver tu perfil y ajustar metas\n' +
+    '⚙️ *Sincronizar Fit* — Conectar smartwatch\n\n' +
     '_También puedes escribirme directamente:_\n' +
-    '_"Comí un sándwich"_, _"Pesé 80kg"_, _"Hice sentadilla"_\n' +
-    '_O enviarme una foto de tu comida._ 📸',
+    '_"Hoy pesé 80kg"_ | _"Desayuné avena"_ | _"Duda: ¿hago cardio antes o después?"_',
     { parse_mode: 'Markdown', ...MAIN_KEYBOARD }
   );
 });
@@ -317,6 +316,23 @@ async function handleRutina(ctx: any) {
   } catch (error: any) {
     console.error('[Cmd /rutina] Error:', error);
     await ctx.reply('Error generando tu rutina. Intenta de nuevo.', MAIN_KEYBOARD);
+  }
+}
+
+// /progreso → Análisis profundo de tendencias y recomendaciones
+bot.command('progreso', async (ctx) => handleProgreso(ctx));
+
+async function handleProgreso(ctx: any) {
+  try {
+    const userId = ctx.from.id;
+    await ctx.sendChatAction('typing');
+    await ctx.reply('📈 *Analizando tus datos de los últimos 14 días...* \nAguarda un momento mientras reviso tus tendencias.', { parse_mode: 'Markdown' });
+
+    const analisis = await generarAnalisisProgreso(userId);
+    await ctx.reply(analisis, { parse_mode: 'Markdown', ...MAIN_KEYBOARD });
+  } catch (error) {
+    console.error('[Cmd /progreso] Error:', error);
+    await ctx.reply('No pude generar tu reporte de progreso ahora mismo. ❌', MAIN_KEYBOARD);
   }
 }
 
@@ -397,9 +413,13 @@ async function handlePerfil(ctx: any) {
       `• Edad: ${userData.edad} años\n\n` +
       `🎯 *Metas Diarias*\n` +
       `• Calorías: ${userData.calorias_meta} kcal\n` +
-      `• Proteína: ${userData.proteina_meta}g\n\n` +
-      `_Para actualizar tus datos usa el botón 🔄 Reconfigurar Perfil o dime: "Cambiar mi objetivo a ganar músculo"_`,
-      { parse_mode: 'Markdown', ...MAIN_KEYBOARD }
+      `• Proteína: ${userData.proteina_meta}g\n`,
+      {
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('🔄 Ajustar mis datos', 'reconfigurar_perfil')]
+        ])
+      }
     );
   } catch (error: any) {
     console.error('[Cmd /perfil] Error:', error);

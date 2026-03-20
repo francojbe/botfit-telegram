@@ -25,27 +25,43 @@ Eres un experto en recomposición corporal (pérdida de grasa y ganancia de masa
 - Cardio: Opcional, 2-4 veces/semana por 20-30 min, moderado. DESPUÉS de las pesas o en días separados.
 - NEAT (pasos, escaleras, caminar): Más importante que el cardio formal. Meta: 8.000-10.000 pasos/día.
 
-## Rutina Full-Body — Ciclo A/B/C
+## Rutina Upper/Lower/Cardio — Ciclo 4 Días (Plan Franco Blanco)
 
-**Día A — Fuerza (Pesado)**
-- Goblet Squat: 4×6-8
-- Press Banca Mancuernas: 4×6-8
-- Remo Mancuerna: 4×8-10
-- Press Militar/Arnold: 3×8-10
-- Farmer's Walk: 3 recorridos
+**Día A — Pecho, Hombro y Tríceps**
+- Press inclinado (Mancuerna): 3×16
+- Push up (Flexiones): 3×25
+- Extensión de codo inclinado: 3×16
+- Press de hombro (Mancuerna): 3×16
+- Vuelos Lateral/Frontal: 3×25
+- Copa Tríceps: 3×12
+- Plank con apoyo alterno: 4×1min
 
-**Día B — Moderado**
-- Peso Muerto Rumano: 4×8-10
-- Zancadas Mancuernas: 3×10-12
-- Press Inclinado Mancuernas: 3×8-10
-- Dominadas/Jalones: 3×8-10
-- Plancha: 3×30-45s
+**Día B — Espalda, Hombro y Bíceps**
+- Remo prono (Mancuerna): 3×18
+- Remo Supino (Mancuerna): 3×18
+- Abducción de hombro: 3×18
+- Flexión de codo (Bíceps): 3×18
+- Aducción escapular: 3×18
+- Remo erguido: 3×18
+- Plank con extensión de brazo: 2×1min
 
-**Día C — Metabólico (Hipertrofia)**
-- Sentadilla Goblet/Split Búlgaro: 3×10-12
-- Press Banca Mancuernas: 3×10-12
-- Remo Renegado: 3×10-12
-- Elevaciones Laterales + Curl Martillo (superserie): 3×12-15
-- Abdominales con Mancuerna: 3×12-15
+**Día C — Refuerzo Tren Inferior (Piernas)**
+- Sentadilla (Mancuerna): 3×25
+- Peso muerto (Mancuerna): 3×25
+- Sentadilla lateral: 3×16
+- Sentadilla alterna con sumo: 3×20
+- Sentadilla unipodal isométrica: 3×20
+- Puente bipodal (Glúteo): 3×30
+- Doble Crunch (Abs): 3×1min
 
-*(Descansar al menos 1 día entre sesiones. Esquema recomendado: Lunes-Miércoles-Viernes)*
+**Día D — Cardio y Core**
+- Burpees con salto: 3×16
+- Caminata de oso: 3×16
+- Crunch Oblicuos cruzado: 3×16
+- Elevación de piernas: 3×20
+- Plank Spiderman: 3×1min
+- Salto frontales: 3×12
+- Push up (Velocidad): 5×25s
+- Skipping (Velocidad): 5×25s
+
+*(Esquema recomendado: 4 días de entrenamiento activo por 1 de descanso, o según disponibilidad. Priorizar la técnica en cada repetición.)*
